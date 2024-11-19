@@ -1,5 +1,4 @@
 from __future__ import annotations
-from besser.BUML.metamodel.structural import NamedElement
 from typing import List, Self, Union
 from abc import ABC
 import gymnasium as gym
@@ -234,7 +233,7 @@ class Environment:
          f'Environment({self.id})'
       )
 
-class RLAgent:
+class Agent:
    """
    A base class for reinforcement learning agents, providing the structure to initialize
    an agent with a specific algorithm name, training hyperparameters, and agent configuration settings. 
@@ -294,7 +293,7 @@ class RLAgent:
 
    def __repr__(self):
       return (
-         f'RLAgent({self.name}, {self.agent_config}, {self.hyper_param})'
+         f'Agent({self.name}, {self.agent_config}, {self.hyper_param})'
       )
 
 class Result:
@@ -373,20 +372,20 @@ class RL:
 
       Args:
           result (Result): Evaluation metrics and settings for assessing agents.
-          agents List[RLAgent]: List of reinforcement learning agents with specified algorithm name, training 
+          agents List[Agent]: List of reinforcement learning agents with specified algorithm name, training 
               hyperparameters, and configuration settings.
           environment (Environment): A simulated environment in which a reinforcement learning agent interacts.
 
       Attributes:
           result (Result): Evaluation metrics and settings for assessing agents.
-          agents List[RLAgent]: A reinforcement learning agent with specified algorithm name, training 
+          agents List[Agent]: A reinforcement learning agent with specified algorithm name, training 
               hyperparameters, and configuration settings.
           environment (Environment): A simulated environment in which a reinforcement learning agent interacts.
       '''
 
-      def __init__(self, result: Result, agents: List[RLAgent], environment: Environment):
+      def __init__(self, result: Result, agents: List[Agent], environment: Environment):
          self.result: Result = result
-         self.agents: List[RLAgent] = agents
+         self.agents: List[Agent] = agents
          self.environment: Environment = environment
 
       @property
@@ -405,20 +404,25 @@ class RL:
          self.__result = result
 
       @property
-      def agents(self) -> RLAgent:
+      def agents(self) -> Agent:
          """
-         List[RLAgent]: Get the reinforcement learning agents with specified algorithm name, 
+         List[Agent]: Get the reinforcement learning agents with specified algorithm name, 
          training hyperparameters, and configuration settings.
          """
          return self.__agents
 
       @agents.setter
-      def agents(self, agents: List[RLAgent]):
+      def agents(self, agents: List[Agent]):
          """
-         List[RLAgent]: Set the reinforcement learning agents with specified algorithm name, 
+         List[Agent]: Set the reinforcement learning agents with specified algorithm name, 
          training hyperparameters, and configuration settings.
          """
-         self.__agents = agents
+         if isinstance(agents, list) and \
+               all(isinstance(agent, Agent) for agent in agents):
+               self.__agents = agents
+         else:
+            raise ValueError("'agents' must be a list of Agent's.")
+
 
       @property
       def environment(self) -> Environment:
