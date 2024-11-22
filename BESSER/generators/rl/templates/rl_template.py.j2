@@ -1,155 +1,92 @@
-
-import os
-os.environ['TF_USE_LEGACY_KERAS'] = '1'
-
+{%- import "rl_components_template.py.j2" as rl_components -%}
 import tensorflow as tf
+from tf_agents.utils import common
 from tf_agents.environments import suite_gym
 from tf_agents.environments import tf_py_environment
-from tf_agents.agents.dqn import dqn_agent
-from tf_agents.networks.q_network import QNetwork
-from tf_agents.replay_buffers import tf_uniform_replay_buffer
-from tf_agents.utils import common
-from tf_agents.drivers import dynamic_step_driver
-from tf_agents.policies import random_tf_policy
-from tf_agents.trajectories import trajectory
+from metrics import {{ model.result.metrics | join(', ') }}
+{%- for agent_type in agent_types %}
+from {{agent_type}}_trainer import {{agent_type|upper}}Trainer
+{%- endfor %}
+{%- set agents = model.agents%}
+{%- set old_agent_name = agents[0].name%}
+{%- set ns = namespace(count=1) %}
 
-# Set up the environment
-env_name = '{{ model.environment.id }}'
-train_py_env = suite_gym.load(env_name)
-eval_py_env = suite_gym.load(env_name)
+# Agent trainer configuartions
+trainer_configs=[]
 
-train_env = tf_py_environment.TFPyEnvironment(train_py_env)
-eval_env = tf_py_environment.TFPyEnvironment(eval_py_env)
-
-
-
-
-
-results = {}
-{% set agents = model.agents%}
-{% for agent in agents%}
-##########
-# Agent {{ loop.index }}
-##########
+{%- for agent in agents%}
+{%- set name = agent.name %}
 {%- set hyper_param = agent.hyper_param %}
 {%- set agent_config = agent.agent_config %}
-
-# Define the Q-network
-fc_layer_params = ({{ agent_config.layer_params | join(', ') }},)
-q_net = QNetwork(
-     train_env.observation_spec(),
-     train_env.action_spec(),
-     fc_layer_params=fc_layer_params)
-
-# Create the DQN Agent
-optimizer = tf.keras.optimizers.{{ hyper_param.optimizer | capitalize }}(learning_rate={{ hyper_param.learning_rate }})
-
-train_step_counter = tf.Variable(0)
-
-agent = dqn_agent.DqnAgent(
-    train_env.time_step_spec(),
-    train_env.action_spec(),
-    q_network=q_net,
-    optimizer=optimizer,
-    td_errors_loss_fn={% if agent_config.loss_function == 'mse' %}common.element_wise_squared_loss{% endif %},
-    train_step_counter=train_step_counter)
-
-
-agent.initialize()
-
-# Set Up the Replay Buffer and Data Collection
-
-replay_buffer_capacity = {{ hyper_param.replay_buffer_capacity }} 
-batch_size = {{ hyper_param.batch_size}}
-
-replay_buffer = tf_uniform_replay_buffer.TFUniformReplayBuffer(
-    data_spec=agent.collect_data_spec,
-    batch_size=train_env.batch_size,
-    max_length=replay_buffer_capacity)
-
-def collect_step(environment, policy, buffer):
-    time_step = environment.current_time_step()
-    action_step = policy.action(time_step)
-    next_time_step = environment.step(action_step.action)
-    traj = trajectory.from_transition(time_step, action_step, next_time_step)
-
-    buffer.add_batch(traj)
-
-
-# Train the Agent
-num_iterations = {{hyper_param.num_iterations}}
-collect_steps_per_iteration = {{hyper_param.collect_steps_per_iteration}}
-log_interval = {{hyper_param.log_interval}}
-eval_interval = {{hyper_param.eval_interval}}
-
-# Collect initial data
-for _ in range(1000):
-     collect_step(train_env, random_tf_policy.RandomTFPolicy(
-          train_env.time_step_spec(), train_env.action_spec()), replay_buffer)
-
-dataset = replay_buffer.as_dataset(
-     num_parallel_calls=3, 
-     sample_batch_size=batch_size, 
-     num_steps=2).prefetch(3)
-
-iterator = iter(dataset)
-
-# Evaluate the Agent
-{%- for metric in model.result.metrics %}
-{% if metric  == 'avg_return'%}
-def {{metric}}(environment, policy, num_episodes=10):
-     total_return = 0.0
-     for _ in range(num_episodes):
-          time_step = environment.reset()
-          episode_return = 0.0
-          while not time_step.is_last():
-               action_step = policy.action(time_step)
-               time_step = environment.step(action_step.action)
-               episode_return += time_step.reward
-          total_return += episode_return
-     
-     avg_return = total_return / num_episodes
-     return avg_return.numpy()[0]
-{%- endif %}
+{%- if name != old_agent_name  %} {%- set ns.count = 1 %} {%- endif %}
+{{name}}_trainer_config_{{ ns.count }} = {
+     "trainer":{{ name|upper }}Trainer,
+     "agent_name":"{{ name|upper }} Agent {{ns.count}}",
+     "agent_config":{
+          "fc_layer_params":({{ agent_config.layer_params | join(', ') }},),
+          "loss_function":{{rl_components.get_loss_function(agent_config.loss_function)}} 
+     },
+     "hyper_param":{
+          "learning_rate":{{hyper_param.learning_rate}},
+          "optimizer":{{rl_components.get_optimizer(hyper_param.optimizer)}} ,
+          "num_iterations":{{hyper_param.num_iterations}},
+          "collect_steps_per_iteration":{{hyper_param.collect_steps_per_iteration}},
+          "log_interval":{{hyper_param.log_interval}},
+          "eval_interval":{{hyper_param.eval_interval}},
+          "replay_buffer_capacity":{{hyper_param.replay_buffer_capacity}},
+          "batch_size":{{hyper_param.batch_size}}
+     }
+}
+trainer_configs.append({{name}}_trainer_config_{{ ns.count }})
+{%- set old_agent_name = name%}
+{%- set ns.count = ns.count + 1%}
 {%- endfor %}
+ 
+eval_param = {
+     "metrics":{ {%- for metric in model.result.metrics %} "{{metric}}":{{metric}}{%- endfor%} },
+     "num_eval_episodes": {{model.result.num_eval_episodes}}
+}
 
-# Train the agent
-print(f'Agent{{ loop.index }} training:')
-for iteration in range(num_iterations):
-     for _ in range(collect_steps_per_iteration):
-          collect_step(train_env, agent.collect_policy, replay_buffer)
-     experience, _ = next(iterator)
-     train_loss = agent.train(experience).loss
-     step = agent.train_step_counter.numpy()
-     if step % log_interval == 0:
-          print(f'Step {step}: loss = {train_loss}')
-     if step % eval_interval == 0:
-          {%- for metric in model.result.metrics %}
-          {{metric}}_value = {{metric}}(eval_env, agent.policy, num_episodes={{model.result.num_eval_episodes}})
-          print(f'Step {step}: {{metric}} = { {{metric}}_value }')
-          {%- endfor %}
-print("---------------------------")
+def main():
+     # Set up the environment
+     env_name = '{{model.environment.id}}'
+     train_py_env = suite_gym.load(env_name)
+     eval_py_env = suite_gym.load(env_name)
+     train_env = tf_py_environment.TFPyEnvironment(train_py_env)
+     eval_env = tf_py_environment.TFPyEnvironment(eval_py_env)
 
-# Evaluate the trained agent
-result={}
-{%- for metric in model.result.metrics %}
-{{metric}}_value = {{metric}}(eval_env, agent.policy, num_episodes={{model.result.num_eval_episodes}})
-result["{{metric}}"]= {{metric}}_value 
-{%- endfor %}
-results["Agent{{loop.index}}"]=result
-{% endfor %}
+     trainers = []
 
-#####################################
-# Display results
-line=f'{"Results":<15}'
-for agent in results.keys():
-     line+=f'{agent:<10}'
-print(line)
-for metric in results[list(results.keys())[0]].keys():
-     line=f'{metric:<15}'
-     for agent in results.keys():
-          line+=f'{results[agent][metric]:<10.2g}'
+     for trainer_config in trainer_configs:
+          trainers.append(trainer_config["trainer"](
+                    trainer_config,
+                    eval_param,
+                    train_env,
+                    eval_env))
+     results={}
+     for trainer in trainers:
+          trainer.train()
+          result= trainer.evaluate()
+          results[trainer.agent_name]= result
+
+
+     # Display results
+     column_width= 20
+     line=f'{"Results":<{column_width}}'
+     for agent_name in results.keys():
+          line+=f'{agent_name:<{column_width}}'
      print(line)
+     for metric in results[list(results.keys())[0]].keys():
+          line=f'{metric:<{column_width}}'
+          for agent_name in results.keys():
+               formatted_result = f"{results[agent_name][metric]:.2f}"  
+               trimmed_result = formatted_result.rstrip('0').rstrip('.') if '.' in formatted_result else formatted_result
+               line+=f'{trimmed_result:<{column_width}}'
+          print(line)
+
+
+if __name__ == "__main__":
+     main()
 
 
      

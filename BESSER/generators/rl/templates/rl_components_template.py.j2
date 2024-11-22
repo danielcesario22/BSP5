@@ -1,0 +1,7 @@
+{%- macro get_loss_function(loss_function) %}
+     {%- if loss_function == 'mse'%} common.element_wise_squared_loss {%- endif %}
+{%- endmacro %}
+
+{%- macro get_optimizer(optimizer) %}
+     {%- if optimizer == 'adam'%} tf.keras.optimizers.Adam {%- endif %}
+{%- endmacro %}

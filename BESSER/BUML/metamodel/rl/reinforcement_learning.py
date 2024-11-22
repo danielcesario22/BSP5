@@ -265,9 +265,9 @@ class Agent:
       
          Raises:
             ValueError: If algorithm name is not one of the allowed 
-            options: 'DQN'
+            options: 'dqn'
       """
-      if name not in ['DQN']:
+      if name not in ['dqn']:
             raise ValueError("Invalid agent algorithm name")
       self.__name = name
    

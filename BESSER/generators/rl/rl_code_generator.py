@@ -15,6 +15,8 @@ class RLGenerator(GeneratorInterface):
     """
     def __init__(self, model: RL, output_dir: str = None):
         super().__init__(model, output_dir)
+    
+
 
     def generate(self):
         """
@@ -23,14 +25,47 @@ class RLGenerator(GeneratorInterface):
         folder.
 
         Returns:
-            None, but store the generated code as a file named rl.py 
+            None, stores generateed code in files
         """
-        file_path = self.build_generation_path(file_name="rl.py")
         templates_path = os.path.join(os.path.dirname(
             os.path.abspath(__file__)), "templates")
         env = Environment(loader=FileSystemLoader(templates_path))
-        template = env.get_template('rl_template.py.j2')
+
+        # Agent Trainers
+        agent_types = [agent.name for agent in self.model.agents]
+        for agent_type in list(set(agent_types)):
+            template_name = f"{agent_type}_template.py.j2"
+            template = env.get_template(template_name)
+
+            file_path = self.build_generation_path(file_name=f"{agent_type}_trainer.py")
+            with open(file_path, mode="w") as f:
+                generated_code = template.render()
+                f.write(generated_code)
+                print(f"Code for '{agent_type}' trainer generated in the location: {file_path}")
+
+        # Main RL Trainer
+        template_name = f"rl_template.py.j2"
+        template = env.get_template(template_name)
+
+        file_path = self.build_generation_path(file_name=f"rl_trainer.py")
+
+        self.model.agents = sorted(self.model.agents, key=lambda agent: agent.name)
+        unique_agent_types = list(set([agent.name for agent in self.model.agents]))
+
         with open(file_path, mode="w") as f:
-            generated_code = template.render(model=self.model)
+            generated_code = template.render(model=self.model, agent_types=unique_agent_types)
             f.write(generated_code)
-            print("Code generated in the location: " + file_path)
+            print(f"Code for trainer generated in the location: {file_path}")
+
+        # Metrics
+        template_name = f"metrics_template.py.j2"
+        template = env.get_template(template_name)
+
+        file_path = self.build_generation_path(file_name=f"metrics.py")
+
+        with open(file_path, mode="w") as f:
+            generated_code = template.render(metrics=self.model.result.metrics)
+            f.write(generated_code)
+            print(f"Code for metrics generated in the location: {file_path}")
+
+   

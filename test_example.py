@@ -28,8 +28,8 @@ loss_function = 'mse'
 agent_config_1 = DQNConfiguration( layer_params_1, loss_function)
 agent_config_2 = DQNConfiguration( layer_params_2, loss_function)
 
-agent_1= Agent(name="DQN",agent_config=agent_config_1,hyper_param=hyperparameters)
-agent_2= Agent(name="DQN",agent_config=agent_config_2,hyper_param=hyperparameters)
+agent_1= Agent(name="dqn",agent_config=agent_config_1,hyper_param=hyperparameters)
+agent_2= Agent(name="dqn",agent_config=agent_config_2,hyper_param=hyperparameters)
 agents = [agent_1,agent_2]
 
 env = Environment("CartPole-v1")
@@ -44,8 +44,8 @@ rl = RL(result, agents, env)
 print(rl)
 # Output:
 # RL(Result(['avg_return'], 10), 
-# [Agent(DQN, DQNConfiguration([200], mse), Hyperparameters(800, 1, 100, 400, 10000, 64)), 
-# Agent(DQN, DQNConfiguration([200, 70], mse), Hyperparameters(800, 1, 100, 400, 10000, 64))], 
+# [Agent(dqn, DQNConfiguration([200], mse), Hyperparameters(800, 1, 100, 400, 10000, 64)), 
+# Agent(dqn, DQNConfiguration([200, 70], mse), Hyperparameters(800, 1, 100, 400, 10000, 64))], 
 # Environment(CartPole-v1))
 
 generator = RLGenerator(rl)
