@@ -1,4 +1,5 @@
 # BSP5
-
-## metamodel
-![rl_metamodel drawio](https://github.com/user-attachments/assets/6f32efab-7898-4472-b0f3-66ccfc163066)
+## Metamodel
+![rl_metamodel drawio](./doc/source/img/rl_metamodel.png)
+## Report
+Link to Overleaf: https://www.overleaf.com/2556575262mtffxvtwxzxt#9b7888
