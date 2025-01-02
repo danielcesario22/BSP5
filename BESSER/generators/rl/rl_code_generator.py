@@ -1,6 +1,6 @@
 import os
 from jinja2 import Environment, FileSystemLoader
-from Besser.BUML.metamodel.rl import RL 
+from Besser.BUML.metamodel.rl import RLTrainer 
 
 from besser.generators import GeneratorInterface  
 
@@ -13,7 +13,7 @@ class RLGenerator(GeneratorInterface):
         model (RL): An instance of the RL Model class representing the B-UML model.
         output_dir (str, optional): The output directory where the generated code will be saved. Defaults to None.
     """
-    def __init__(self, model: RL, output_dir: str = None):
+    def __init__(self, model: RLTrainer, output_dir: str = None):
         super().__init__(model, output_dir)
     
 
@@ -64,7 +64,7 @@ class RLGenerator(GeneratorInterface):
         file_path = self.build_generation_path(file_name=f"metrics.py")
 
         with open(file_path, mode="w") as f:
-            generated_code = template.render(metrics=self.model.result.metrics)
+            generated_code = template.render(metrics=self.model.evaluationSettings.metrics)
             f.write(generated_code)
             print(f"Code for metrics generated in the location: {file_path}")
 

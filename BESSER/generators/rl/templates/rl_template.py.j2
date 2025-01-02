@@ -1,23 +1,31 @@
 {%- import "rl_components_template.py.j2" as rl_components -%}
+import os
+# Keep using keras-2 (tf-keras) rather than keras-3 (keras).
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
+
 import tensorflow as tf
 from tf_agents.utils import common
 from tf_agents.environments import suite_gym
 from tf_agents.environments import tf_py_environment
-from metrics import {{ model.result.metrics | join(', ') }}
+from metrics import {{ model.evaluationSettings.metrics | join(', ') }}
 {%- for agent_type in agent_types %}
 from {{agent_type}}_trainer import {{agent_type|upper}}Trainer
+import pandas as pd
+from datetime import date
 {%- endfor %}
 {%- set agents = model.agents%}
 {%- set old_agent_name = agents[0].name%}
 {%- set ns = namespace(count=1) %}
 
-# Agent trainer configuartions
+# Agent trainer configuartions and save configuartions
 trainer_configs=[]
+save_configs=[]
 
 {%- for agent in agents%}
 {%- set name = agent.name %}
 {%- set hyper_param = agent.hyper_param %}
 {%- set agent_config = agent.agent_config %}
+{%- set save_config = agent.result %}
 {%- if name != old_agent_name  %} {%- set ns.count = 1 %} {%- endif %}
 {{name}}_trainer_config_{{ ns.count }} = {
      "trainer":{{ name|upper }}Trainer,
@@ -37,14 +45,20 @@ trainer_configs=[]
           "batch_size":{{hyper_param.batch_size}}
      }
 }
+{{name}}_save_config_{{ ns.count }} = {
+     "agent_id":"{{save_config.agent_id}}",
+     "timestamp":date.today(),
+     "filepath":"{{save_config.filepath}}"
+} 
 trainer_configs.append({{name}}_trainer_config_{{ ns.count }})
+save_configs.append({{name}}_save_config_{{ ns.count }})
 {%- set old_agent_name = name%}
 {%- set ns.count = ns.count + 1%}
 {%- endfor %}
  
 eval_param = {
-     "metrics":{ {%- for metric in model.result.metrics %} "{{metric}}":{{metric}}{%- endfor%} },
-     "num_eval_episodes": {{model.result.num_eval_episodes}}
+     "metrics":{ {%- for metric in model.evaluationSettings.metrics %} "{{metric}}":{{metric}}{%- endfor%} },
+     "num_eval_episodes": {{model.evaluationSettings.num_eval_episodes}}
 }
 
 def main():
@@ -63,23 +77,38 @@ def main():
                     eval_param,
                     train_env,
                     eval_env))
-     results={}
+
+     train_results=[]
+     eval_results=[]
      for trainer in trainers:
-          trainer.train()
-          result= trainer.evaluate()
-          results[trainer.agent_name]= result
+          train_result =trainer.train()
+          eval_result=trainer.evaluate()
+          train_results.append(train_result)
+          eval_results.append( eval_result)
+
+     # Save Training and Evaluation data
+     for save_config,train_result,eval_result in zip(save_configs,train_results,eval_results):
+          df1=pd.DataFrame(train_result)
+          df2=pd.DataFrame([eval_result])
+          filepath = save_config["filepath"]
+          date= save_config["timestamp"]
+          agent_id = save_config["agent_id"]
+          name = eval_result["Agent"]
+          with pd.ExcelWriter(f'/{filepath}/{date}-{agent_id}-{name}.xlsx') as writer:
+               df1.to_excel(writer, sheet_name='Training', index=False)
+               df2.to_excel(writer, sheet_name='Evaluation', index=False)
 
 
      # Display results
      column_width= 20
-     line=f'{"Results":<{column_width}}'
-     for agent_name in results.keys():
-          line+=f'{agent_name:<{column_width}}'
+     line=f'{"Agent":<{column_width}}'
+     for metric in list(eval_results[0].keys())[1:]:
+          line+=f'{metric:<{column_width}}'
      print(line)
-     for metric in results[list(results.keys())[0]].keys():
-          line=f'{metric:<{column_width}}'
-          for agent_name in results.keys():
-               formatted_result = f"{results[agent_name][metric]:.2f}"  
+     for result in eval_results:
+          line=f'{result["Agent"]:<{column_width}}'
+          for metric in list(result.keys())[1:]:
+               formatted_result = f"{result[metric]:.2f}"  
                trimmed_result = formatted_result.rstrip('0').rstrip('.') if '.' in formatted_result else formatted_result
                line+=f'{trimmed_result:<{column_width}}'
           print(line)

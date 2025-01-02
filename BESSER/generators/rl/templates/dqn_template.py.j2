@@ -96,6 +96,7 @@ class DQNTrainer:
         iterator = iter(dataset)
 
         # Training loop
+        results=[]
         print(f'-- Training {self.agent_name} --')
         for iteration in range(num_iterations):
 
@@ -108,20 +109,30 @@ class DQNTrainer:
             train_loss = self.agent.train(experience).loss
             step = self.agent.train_step_counter.numpy()
 
+            result={}
             # Log progress
             if step % log_interval == 0:
+                result["iteration"]=step
+                result["loss"]=train_loss.numpy()
                 print(f"Step {step}: loss = {train_loss}")
 
             # Evaluate the agent
             if step % eval_interval == 0:
-                self._evaluate_and_log(metrics, num_eval_episodes, step)
+                self._evaluate_and_log(metrics, num_eval_episodes, step, result)
+
+            if step % log_interval == 0 or step % eval_interval == 0:
+                results.append(result)
+        
+        return results
 
 
-    def _evaluate_and_log(self, metrics, num_eval_episodes, step):
+    def _evaluate_and_log(self, metrics, num_eval_episodes, step, result):
         """Evaluate the agent and log metrics."""
         for name, metric in metrics.items():
             value = metric(self.eval_env, self.agent.policy, num_eval_episodes)
             print(f"Step {step}: {name} = {value}")
+            result[name]=value
+            result["iteration"]=step
 
     def evaluate(self, num_eval_episodes=None):
         """
@@ -129,7 +140,7 @@ class DQNTrainer:
         """
         num_eval_episodes = num_eval_episodes or self.eval_param["num_eval_episodes"]
         metrics = self.eval_param["metrics"]
-        results = {}
+        results = {"Agent":self.agent_name}
         for name, metric in metrics.items():
             value = metric(self.eval_env, self.agent.policy, num_eval_episodes)
             results[name] = value

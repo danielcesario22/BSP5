@@ -1,4 +1,4 @@
-from Besser.BUML.metamodel.rl import Hyperparameters, Agent, Result, Environment, DQNConfiguration,RL
+from Besser.BUML.metamodel.rl import Hyperparameters, Agent, Result, Environment, DQNConfiguration,RLTrainer,EvaluationSettings
 from Besser.generators.rl import RLGenerator
 
 learning_rate = 1e-3
@@ -28,8 +28,10 @@ loss_function = 'mse'
 agent_config_1 = DQNConfiguration( layer_params_1, loss_function)
 agent_config_2 = DQNConfiguration( layer_params_2, loss_function)
 
-agent_1= Agent(name="dqn",agent_config=agent_config_1,hyper_param=hyperparameters)
-agent_2= Agent(name="dqn",agent_config=agent_config_2,hyper_param=hyperparameters)
+
+agent_1= Agent(id="agent1",name="dqn",agent_config=agent_config_1,hyper_param=hyperparameters)
+agent_2= Agent(id="agent2",name="dqn",agent_config=agent_config_2,hyper_param=hyperparameters)
+
 agents = [agent_1,agent_2]
 
 env = Environment("CartPole-v1")
@@ -37,15 +39,17 @@ env = Environment("CartPole-v1")
 metrics = ['avg_return']
 num_eval_episodes = 10
 
-result = Result( metrics, num_eval_episodes)
+evaluationSettings = EvaluationSettings( metrics, num_eval_episodes)
 
-rl = RL(result, agents, env)
+rl = RLTrainer(evaluationSettings, agents, env)
 
 print(rl)
 # Output:
-# RL(Result(['avg_return'], 10), 
-# [Agent(dqn, DQNConfiguration([200], mse), Hyperparameters(800, 1, 100, 400, 10000, 64)), 
-# Agent(dqn, DQNConfiguration([200, 70], mse), Hyperparameters(800, 1, 100, 400, 10000, 64))], 
+# RLTrainer(EvaluationSettings(['avg_return'], 10), 
+# [Agent(dqn, DQNConfiguration([200], mse), Hyperparameters(800, 1, 100, 400, 10000, 64), 
+# Result(agent1,2025-01-02, /Users/danielcesario/Documents/Uni/Semester5/BSP/GitProject/BSP5)),
+# Agent(dqn, DQNConfiguration([200, 70], mse), Hyperparameters(800, 1, 100, 400, 10000, 64), 
+# Result(agent2,2025-01-02, /Users/danielcesario/Documents/Uni/Semester5/BSP/GitProject/BSP5))], 
 # Environment(CartPole-v1))
 
 generator = RLGenerator(rl)

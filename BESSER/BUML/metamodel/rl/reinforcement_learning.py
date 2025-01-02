@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import List, Self, Union
 from abc import ABC
 import gymnasium as gym
+from datetime import date
+import os
 
 
 class Hyperparameters:
@@ -232,6 +234,47 @@ class Environment:
       return (
          f'Environment({self.id})'
       )
+class Result:
+      '''
+      Represents the evaluation outcome for an agent.
+
+      Args:
+            agent_id (str): Unique identifier of the evaluated agent.
+            timestamp (date): Time when the evaluation occurred.
+            filepath (str): Location where evaluation data is saved.
+
+      Attributes:
+            agent_id (str): Unique identifier of the evaluated agent.
+            timestamp (date): Time when the evaluation occurred.
+            filepath (str): Location where evaluation data is saved.
+      '''
+
+      def __init__(self,filepath: str=os.getcwd()):
+         self.timestamp: date = date.today() 
+         self.filepath: str = filepath
+
+      @property
+      def agent_id(self) -> str:
+         """str: Get the id of the evaluated agent."""
+         return self.__agent_id
+
+      @agent_id.setter
+      def agent_id(self, agent_id: str):
+         """str: Set the id of the evaluated agent."""
+         self.__agent_id = agent_id
+
+      @property
+      def filepath(self) -> str:
+         """str: Get the location where evaluation data is saved."""
+         return self.__filepath
+
+      @filepath.setter
+      def filepath(self, filepath: str):
+         """str: Set the location where evaluation data is saved."""
+         self.__filepath = filepath
+
+      def __repr__(self):
+         return f'Result({self.agent_id},{self.timestamp}, {self.filepath})'
 
 class Agent:
    """
@@ -239,20 +282,37 @@ class Agent:
    an agent with a specific algorithm name, training hyperparameters, and agent configuration settings. 
    
    Args:
+         id (str): Agent id.
          name (str): Name of the reinforcement algorithm.
          hyper_param (Hyperparameters): The parameters related to the training of the agent.
          agent_config (AgentConfiguration): The parameters related to the reinforcement learning algorithm.
+         result (Result): Represents the evaluation outcome for the agent.
 
    Attributes:
+         id (str): Agent id.
          name (str): Name of the reinforcement algorithm.
          hyper_param (Hyperparameters): The parameters related to the training of the agent.
          agent_config (AgentConfiguration): The parameters related to the reinforcement learning algorithm.
+         result (Result): Represents the evaluation outcome for the agent.
    """
    
-   def __init__(self, name: str, agent_config: AgentConfiguration, hyper_param: Hyperparameters):
+   def __init__(self, id: str, name: str, agent_config: AgentConfiguration, hyper_param: Hyperparameters):
+      self.id: str = id
       self.name : str = name
       self.agent_config: AgentConfiguration = agent_config
       self.hyper_param: Hyperparameters = hyper_param
+      self.result: Result = Result()
+      self.result.agent_id=id
+
+   @property
+   def id(self) -> str:
+      """str: Get the id of the agent."""
+      return self.__id
+   
+   @id.setter
+   def id(self, id: str):
+      """str: Set the id of the agent."""
+      self.__id = id
    
    @property
    def name(self) -> str:
@@ -290,13 +350,16 @@ class Agent:
    def hyper_param(self, hyper_param: Hyperparameters):
       """Hyperparameters: Set the training parameters."""
       self.__hyper_param = hyper_param
+   
 
    def __repr__(self):
       return (
-         f'Agent({self.name}, {self.agent_config}, {self.hyper_param})'
+         f'Agent({self.name}, {self.agent_config}, {self.hyper_param}, {self.result})'
       )
 
-class Result:
+
+
+class EvaluationSettings:
       '''
       A class to manage evaluation metrics and settings for assessing agents.
 
@@ -360,48 +423,48 @@ class Result:
          self.__num_eval_episodes = num_eval_episodes
       
       def __repr__(self):
-         return f'Result({self.metrics}, {self.num_eval_episodes})'
+         return f'EvaluationSettings({self.metrics}, {self.num_eval_episodes})'
          
       
       
 
-class RL:
+class RLTrainer:
       '''
       A central class for managing the components of a reinforcement learning workflow, including
       the environment, hyperparameters, agent configuration, and evaluation metrics.
 
       Args:
-          result (Result): Evaluation metrics and settings for assessing agents.
+          evaluationSettings (EvaluationSettings): Evaluation metrics and settings for assessing agents.
           agents List[Agent]: List of reinforcement learning agents with specified algorithm name, training 
               hyperparameters, and configuration settings.
           environment (Environment): A simulated environment in which a reinforcement learning agent interacts.
 
       Attributes:
-          result (Result): Evaluation metrics and settings for assessing agents.
+          evaluationSettings (EvaluationSettings): Evaluation metrics and settings for assessing agents.
           agents List[Agent]: A reinforcement learning agent with specified algorithm name, training 
               hyperparameters, and configuration settings.
           environment (Environment): A simulated environment in which a reinforcement learning agent interacts.
       '''
 
-      def __init__(self, result: Result, agents: List[Agent], environment: Environment):
-         self.result: Result = result
+      def __init__(self, evaluationSettings: EvaluationSettings, agents: List[Agent], environment: Environment):
+         self.evaluationSettings: EvaluationSettings = evaluationSettings
          self.agents: List[Agent] = agents
          self.environment: Environment = environment
 
       @property
-      def result(self) -> Result:
+      def evaluationSettings(self) -> EvaluationSettings:
          """
-         Result: Get the evaluation metrics and settings for assessing agents.
+         EvaluationSettings: Get the evaluation metrics and settings for assessing agents.
          """
-         return self.__result
+         return self.__evaluationSettings
 
-      @result.setter
-      def result(self, result: Result):
+      @evaluationSettings.setter
+      def evaluationSettings(self, evaluationSettings: EvaluationSettings):
          """
-         Result: Set the evaluation metrics and settings for assessing agents.
+         EvaluationSettings: Set the evaluation metrics and settings for assessing agents.
          """
          
-         self.__result = result
+         self.__evaluationSettings = evaluationSettings
 
       @property
       def agents(self) -> Agent:
@@ -441,6 +504,6 @@ class RL:
          self.__environment = environment
 
       def __repr__(self):
-         return f'RL({self.result}, {self.agents}, {self.environment})'
+         return f'RLTrainer({self.evaluationSettings}, {self.agents}, {self.environment})'
 
 
