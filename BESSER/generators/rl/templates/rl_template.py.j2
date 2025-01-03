@@ -43,12 +43,14 @@ save_configs=[]
           "eval_interval":{{hyper_param.eval_interval}},
           "replay_buffer_capacity":{{hyper_param.replay_buffer_capacity}},
           "batch_size":{{hyper_param.batch_size}}
-     }
+     },
+     "policy_path":{%- if agent.policy_path==None %} None {%- else %} "{{agent.policy_path}}"{%- endif %}
 }
 {{name}}_save_config_{{ ns.count }} = {
      "agent_id":"{{save_config.agent_id}}",
      "timestamp":date.today(),
-     "filepath":"{{save_config.filepath}}"
+     "filepath":"{{save_config.filepath}}",
+     "video":{{save_config.video}}
 } 
 trainer_configs.append({{name}}_trainer_config_{{ ns.count }})
 save_configs.append({{name}}_save_config_{{ ns.count }})
@@ -80,22 +82,32 @@ def main():
 
      train_results=[]
      eval_results=[]
-     for trainer in trainers:
-          train_result =trainer.train()
+     for trainer,save_config in zip(trainers,save_configs):
+          if trainer.policy_path == None:
+               train_result =trainer.train()
+               train_results.append(train_result)
           eval_result=trainer.evaluate()
-          train_results.append(train_result)
           eval_results.append( eval_result)
 
-     # Save Training and Evaluation data
-     for save_config,train_result,eval_result in zip(save_configs,train_results,eval_results):
-          df1=pd.DataFrame(train_result)
-          df2=pd.DataFrame([eval_result])
           filepath = save_config["filepath"]
           date= save_config["timestamp"]
           agent_id = save_config["agent_id"]
           name = eval_result["Agent"]
+
+          if save_config["video"]:  
+               # Create evaluation video
+               trainer.create_policy_eval_video(eval_py_env, f"/{filepath}/{date}-{agent_id}-{name}")
+
+          # Save policy
+          if trainer.policy_path == None:
+               trainer.save_policy(f"/{filepath}")
+
+          # Save Training and Evaluation data
           with pd.ExcelWriter(f'/{filepath}/{date}-{agent_id}-{name}.xlsx') as writer:
-               df1.to_excel(writer, sheet_name='Training', index=False)
+               if trainer.policy_path == None:
+                    df1=pd.DataFrame(train_result)
+                    df1.to_excel(writer, sheet_name='Training', index=False)
+               df2=pd.DataFrame([eval_result])
                df2.to_excel(writer, sheet_name='Evaluation', index=False)
 
 

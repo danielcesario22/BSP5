@@ -18,7 +18,7 @@ dqn_trainer_config_1 = {
      "trainer":DQNTrainer,
      "agent_name":"DQN Agent 1",
      "agent_config":{
-          "fc_layer_params":(200,),
+          "fc_layer_params":(128, 128, 128, 128,),
           "loss_function": common.element_wise_squared_loss 
      },
      "hyper_param":{
@@ -30,40 +30,17 @@ dqn_trainer_config_1 = {
           "eval_interval":400,
           "replay_buffer_capacity":10000,
           "batch_size":64
-     }
+     },
+     "policy_path": None
 }
 dqn_save_config_1 = {
      "agent_id":"agent1",
      "timestamp":date.today(),
-     "filepath":"/Users/danielcesario/Documents/Uni/Semester5/BSP/GitProject/BSP5"
+     "filepath":"/Users/danielcesario/Documents/Uni/Semester5/BSP/GitProject/BSP5",
+     "video":True
 } 
 trainer_configs.append(dqn_trainer_config_1)
 save_configs.append(dqn_save_config_1)
-dqn_trainer_config_2 = {
-     "trainer":DQNTrainer,
-     "agent_name":"DQN Agent 2",
-     "agent_config":{
-          "fc_layer_params":(200, 70,),
-          "loss_function": common.element_wise_squared_loss 
-     },
-     "hyper_param":{
-          "learning_rate":0.001,
-          "optimizer": tf.keras.optimizers.Adam ,
-          "num_iterations":800,
-          "collect_steps_per_iteration":1,
-          "log_interval":100,
-          "eval_interval":400,
-          "replay_buffer_capacity":10000,
-          "batch_size":64
-     }
-}
-dqn_save_config_2 = {
-     "agent_id":"agent2",
-     "timestamp":date.today(),
-     "filepath":"/Users/danielcesario/Documents/Uni/Semester5/BSP/GitProject/BSP5"
-} 
-trainer_configs.append(dqn_trainer_config_2)
-save_configs.append(dqn_save_config_2)
  
 eval_param = {
      "metrics":{ "avg_return":avg_return },
@@ -89,22 +66,32 @@ def main():
 
      train_results=[]
      eval_results=[]
-     for trainer in trainers:
-          train_result =trainer.train()
+     for trainer,save_config in zip(trainers,save_configs):
+          if trainer.policy_path == None:
+               train_result =trainer.train()
+               train_results.append(train_result)
           eval_result=trainer.evaluate()
-          train_results.append(train_result)
           eval_results.append( eval_result)
 
-     # Save Training and Evaluation data
-     for save_config,train_result,eval_result in zip(save_configs,train_results,eval_results):
-          df1=pd.DataFrame(train_result)
-          df2=pd.DataFrame([eval_result])
           filepath = save_config["filepath"]
           date= save_config["timestamp"]
           agent_id = save_config["agent_id"]
           name = eval_result["Agent"]
+
+          if save_config["video"]:  
+               # Create evaluation video
+               trainer.create_policy_eval_video(eval_py_env, f"/{filepath}/{date}-{agent_id}-{name}")
+
+          # Save policy
+          if trainer.policy_path == None:
+               trainer.save_policy(f"/{filepath}")
+
+          # Save Training and Evaluation data
           with pd.ExcelWriter(f'/{filepath}/{date}-{agent_id}-{name}.xlsx') as writer:
-               df1.to_excel(writer, sheet_name='Training', index=False)
+               if trainer.policy_path == None:
+                    df1=pd.DataFrame(train_result)
+                    df1.to_excel(writer, sheet_name='Training', index=False)
+               df2=pd.DataFrame([eval_result])
                df2.to_excel(writer, sheet_name='Evaluation', index=False)
 
 

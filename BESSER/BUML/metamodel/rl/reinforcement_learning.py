@@ -241,17 +241,20 @@ class Result:
       Args:
             agent_id (str): Unique identifier of the evaluated agent.
             timestamp (date): Time when the evaluation occurred.
+            video (bool): Whether to record and save a video of the evaluation.
             filepath (str): Location where evaluation data is saved.
 
       Attributes:
             agent_id (str): Unique identifier of the evaluated agent.
             timestamp (date): Time when the evaluation occurred.
+            video (bool): Whether to record and save a video of the evaluation.
             filepath (str): Location where evaluation data is saved.
       '''
 
-      def __init__(self,filepath: str=os.getcwd()):
-         self.timestamp: date = date.today() 
-         self.filepath: str = filepath
+      def __init__(self ):
+         self.timestamp: date = date.today()
+         self.video = False 
+         self.filepath: str =os.getcwd()
 
       @property
       def agent_id(self) -> str:
@@ -262,6 +265,16 @@ class Result:
       def agent_id(self, agent_id: str):
          """str: Set the id of the evaluated agent."""
          self.__agent_id = agent_id
+      
+      @property
+      def video(self) -> bool:
+         """bool: Returns whether video recording is enabled for the evaluation."""
+         return self.__video
+
+      @video.setter
+      def video(self, video: bool):
+         """bool: Sets whether video recording is enabled for the evaluation."""
+         self.__video = video
 
       @property
       def filepath(self) -> str:
@@ -274,7 +287,7 @@ class Result:
          self.__filepath = filepath
 
       def __repr__(self):
-         return f'Result({self.agent_id},{self.timestamp}, {self.filepath})'
+         return f'Result({self.agent_id},{self.timestamp},{self.video}, {self.filepath})'
 
 class Agent:
    """
@@ -287,6 +300,7 @@ class Agent:
          hyper_param (Hyperparameters): The parameters related to the training of the agent.
          agent_config (AgentConfiguration): The parameters related to the reinforcement learning algorithm.
          result (Result): Represents the evaluation outcome for the agent.
+         policy_path (str): Path to policy folder to load existing policy.
 
    Attributes:
          id (str): Agent id.
@@ -294,13 +308,16 @@ class Agent:
          hyper_param (Hyperparameters): The parameters related to the training of the agent.
          agent_config (AgentConfiguration): The parameters related to the reinforcement learning algorithm.
          result (Result): Represents the evaluation outcome for the agent.
+         policy_path (str): Path to policy folder to load existing policy.
    """
    
-   def __init__(self, id: str, name: str, agent_config: AgentConfiguration, hyper_param: Hyperparameters):
+   def __init__(self, id: str, name: str, agent_config: AgentConfiguration, 
+                hyper_param: Hyperparameters, policy_path: str=None ):
       self.id: str = id
       self.name : str = name
       self.agent_config: AgentConfiguration = agent_config
       self.hyper_param: Hyperparameters = hyper_param
+      self.policy_path = policy_path
       self.result: Result = Result()
       self.result.agent_id=id
 
@@ -352,9 +369,20 @@ class Agent:
       self.__hyper_param = hyper_param
    
 
+   @property
+   def policy_path(self) -> str:
+      """str: Get path to existing policy folder."""
+      return self.__policy_path
+   
+   @policy_path.setter
+   def policy_path(self, policy_path: str):
+      """str: Set path to existing policy folder."""
+      self.__policy_path = policy_path
+   
+
    def __repr__(self):
       return (
-         f'Agent({self.name}, {self.agent_config}, {self.hyper_param}, {self.result})'
+         f'Agent({self.name}, {self.agent_config}, {self.hyper_param}, {self.policy_path}, {self.result})'
       )
 
 
