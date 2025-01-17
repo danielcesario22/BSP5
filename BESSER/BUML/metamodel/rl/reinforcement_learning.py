@@ -251,10 +251,11 @@ class Result:
             filepath (str): Location where evaluation data is saved.
       '''
 
-      def __init__(self ):
+      def __init__(self ,video: bool=False,filepath:str = None):
          self.timestamp: date = date.today()
-         self.video = False 
-         self.filepath: str =os.getcwd()
+         self.video = video 
+         if filepath==None:
+            self.filepath: str =os.getcwd()
 
       @property
       def agent_id(self) -> str:
@@ -299,7 +300,7 @@ class Agent:
          name (str): Name of the reinforcement algorithm.
          hyper_param (Hyperparameters): The parameters related to the training of the agent.
          agent_config (AgentConfiguration): The parameters related to the reinforcement learning algorithm.
-         result (Result): Represents the evaluation outcome for the agent.
+         result (Result): Represents the evaluation outcome for the agent and its settings.
          policy_path (str): Path to policy folder to load existing policy.
 
    Attributes:
@@ -307,18 +308,18 @@ class Agent:
          name (str): Name of the reinforcement algorithm.
          hyper_param (Hyperparameters): The parameters related to the training of the agent.
          agent_config (AgentConfiguration): The parameters related to the reinforcement learning algorithm.
-         result (Result): Represents the evaluation outcome for the agent.
+         result (Result): Represents the evaluation outcome for the agent and its settings.
          policy_path (str): Path to policy folder to load existing policy.
    """
    
    def __init__(self, id: str, name: str, agent_config: AgentConfiguration, 
-                hyper_param: Hyperparameters, policy_path: str=None ):
+                hyper_param: Hyperparameters, result:Result, policy_path: str=None ):
       self.id: str = id
       self.name : str = name
       self.agent_config: AgentConfiguration = agent_config
       self.hyper_param: Hyperparameters = hyper_param
       self.policy_path = policy_path
-      self.result: Result = Result()
+      self.result: Result = result
       self.result.agent_id=id
 
    @property
@@ -379,10 +380,20 @@ class Agent:
       """str: Set path to existing policy folder."""
       self.__policy_path = policy_path
    
+   @property
+   def result(self) -> Result:
+      """Result: Get result configuration."""
+      return self.__result
+   
+   @result.setter
+   def result(self, result: Result):
+      """Result: Set result configuration."""
+      self.__result = result
+   
 
    def __repr__(self):
       return (
-         f'Agent({self.name}, {self.agent_config}, {self.hyper_param}, {self.policy_path}, {self.result})'
+         f'Agent({self.name}, {self.agent_config}, {self.hyper_param}, {self.result}, {self.policy_path})'
       )
 
 
